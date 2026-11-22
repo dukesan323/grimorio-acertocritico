@@ -937,57 +937,84 @@ function copy(text,msg){
 render(true);
 })();
 </script>
-<script type="module">
-  import { initializeApp } from "https://gstatic.com";
-  import { getDatabase, ref, set, onValue } from "https://gstatic.com";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCcbVl0QYbryQ-F703vSLyz2qe3YaE2ixU",
-    authDomain: "://firebaseapp.com",
-    databaseURL: "https://firebaseio.com",
-    projectId: "grimorio-acertocritico",
-    storageBucket: "grimorio-acertocritico.firebasestorage.app",
-    messagingSenderId: "821018439972",
-    appId: "1:821018439972:web:2ffb005aa7cf592cf803b1"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  const grimorioRef = ref(db, 'grimorio_estado');
-
+<script>
+  const DB_URL = "https://firebaseio.com";
+  let ultimoJsonEnviado = "";
   let bloqueado = false;
 
-  window.salvarNaNuvem = function(estado) {
+  // 1. ENVIA OS PERSONAGENS PARA O FIREBASE SEMPRE QUE VOCÊ SALVAR
+  window.salvarNaNuvem = async function(estado) {
     if (bloqueado) return;
-    set(grimorioRef, JSON.stringify(estado))
-      .then(() => console.log("✅ Salvo na nuvem!"))
-      .catch((err) => console.error("❌ Erro ao salvar:", err));
+    const jsonAtual = JSON.stringify(estado);
+    if (jsonAtual === ultimoJsonEnviado) return;
+
+    try {
+      const resposta = await fetch(DB_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: jsonAtual
+      });
+
+      if (resposta.ok) {
+        ultimoJsonEnviado = jsonAtual;
+        console.log("✅ Grimório salvo na nuvem com sucesso!");
+      } else {
+        console.error("❌ Erro HTTP ao salvar no Firebase:", resposta.status, await resposta.text());
+      }
+    } catch (erro) {
+      console.error("❌ Falha de conexão ao salvar no Firebase:", erro);
+    }
   };
 
-  onValue(grimorioRef, (snapshot) => {
-    const jsonNuvem = snapshot.val();
-    if (!jsonNuvem) return;
+  // 2. BUSCA ATUALIZAÇÕES DA NUVEM AO ABRIR O SITE E A CADA 4 SEGUNDOS
+  async function verificarNuvem() {
+    if (bloqueado) return;
+    try {
+      const resposta = await fetch(DB_URL + "?t=" + Date.now());
+      if (!resposta.ok) return;
 
-    let chaveLocal = Object.keys(localStorage).find(k => {
-      try { const p = JSON.parse(localStorage.getItem(k)); return p && Array.isArray(p.chars); }
-      catch(e) { return false; }
-    });
+      const dadosNuvem = await resposta.json();
+      if (!dadosNuvem || !Array.isArray(dadosNuvem.chars)) return;
 
-    const valorAtual = chaveLocal ? localStorage.getItem(chaveLocal) : null;
+      const jsonNuvem = JSON.stringify(dadosNuvem);
+      if (jsonNuvem === ultimoJsonEnviado) return;
 
-    if (valorAtual !== jsonNuvem) {
-      bloqueado = true;
-      if (chaveLocal) {
-        localStorage.setItem(chaveLocal, jsonNuvem);
-      } else {
-        for (let i = 0; i < localStorage.length; i++) {
-          localStorage.setItem(localStorage.key(i), jsonNuvem);
+      // Encontra a chave do Grimório no localStorage
+      let chaveLocal = Object.keys(localStorage).find(k => {
+        try {
+          const p = JSON.parse(localStorage.getItem(k));
+          return p && Array.isArray(p.chars);
+        } catch (e) {
+          return false;
         }
+      });
+
+      const valorLocal = chaveLocal ? localStorage.getItem(chaveLocal) : null;
+
+      if (valorLocal !== jsonNuvem) {
+        bloqueado = true;
+        ultimoJsonEnviado = jsonNuvem;
+
+        if (chaveLocal) {
+          localStorage.setItem(chaveLocal, jsonNuvem);
+        } else {
+          // Se for um dispositivo novo, salva na primeira chave disponível ou recarrega após o init
+          localStorage.setItem("grimorio_backup", jsonNuvem);
+        }
+
+        console.log("🔄 Novos personagens encontrados na nuvem! Atualizando tela...");
+        location.reload();
+      } else {
+        ultimoJsonEnviado = jsonNuvem;
       }
-      bloqueado = false;
-      location.reload();
+    } catch (erro) {
+      console.error("❌ Erro ao ler dados da nuvem:", erro);
     }
-  });
+  }
+
+  // Verifica assim que a página abre e depois a cada 4 segundos
+  verificarNuvem();
+  setInterval(verificarNuvem, 4000);
 </script>
 </body>
 </html>

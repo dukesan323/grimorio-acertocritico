@@ -934,5 +934,62 @@ function copy(text,msg){
 render(true);
 })();
 </script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://gstatic.com";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCcbVl0QYbryQ-F703vSLyz2qe3YaE2ixU",
+    authDomain: "grimorio-acertocritico.firebaseapp.com",
+    databaseURL: "https://grimorio-acertocritico-default-rtdb.firebaseio.com",
+    projectId: "grimorio-acertocritico",
+    storageBucket: "grimorio-acertocritico.firebasestorage.app",
+    messagingSenderId: "821018439972",
+    appId: "1:821018439972:web:2ffb005aa7cf592cf803b1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const grimorioRef = ref(db, 'grimorio_dados');
+
+  let sincronizando = false;
+
+  onValue(grimorioRef, (snapshot) => {
+    const dadosNuvem = snapshot.val();
+    if (!dadosNuvem) return;
+
+    let mudou = false;
+    sincronizando = true;
+
+    Object.keys(dadosNuvem).forEach((chave) => {
+      if (localStorage.getItem(chave) !== dadosNuvem[chave]) {
+        localStorage.setItem(chave, dadosNuvem[chave]);
+        mudou = true;
+      }
+    });
+
+    sincronizando = false;
+
+    if (mudou) {
+      window.dispatchEvent(new Event('storage'));
+      if (typeof render === "function") render();
+      else if (typeof init === "function") init();
+      else location.reload();
+    }
+  });
+
+  const setItemOriginal = localStorage.setItem;
+  localStorage.setItem = function(chave, valor) {
+    setItemOriginal.apply(this, arguments);
+    if (sincronizando) return;
+
+    const pacote = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      pacote[k] = localStorage.getItem(k);
+    }
+    set(grimorioRef, pacote);
+  };
+</script>
 </body>
 </html>

@@ -976,6 +976,13 @@ render(true);
 
       const jsonNuvem = JSON.stringify(dadosNuvem);
       if (jsonNuvem === ultimoJsonEnviado) return;
+            const dadosNuvem = await resposta.json();
+      if (!dadosNuvem || !Array.isArray(dadosNuvem.chars)) return;
+
+      dadosNuvem.chars.forEach(c => {
+        if (!c.refs) c.refs = { items: [] };
+        if (!Array.isArray(c.refs.items)) c.refs.items = [];
+      });
 
       let chaveLocal = Object.keys(localStorage).find(k => {
         try {

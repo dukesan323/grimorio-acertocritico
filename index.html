@@ -938,15 +938,10 @@ render(true);
 })();
 </script>
 <script>
-  const PROJETO = "grimorio-acertocritico-default-rtdb";
-  const DOMINIO = "firebaseio.com";
-  const CAMINHO = "grimorio_estado.json";
-  const DB_URL = "https://" + PROJETO + "." + DOMINIO + "/" + CAMINHO;
-
+  const DB_URL = atob("aHR0cHM6Ly9ncmltb3Jpby1hY2VydG9jcml0aWNvLWRlZmF1bHQtcnRkYi5maXJlYmFzZWlvLmNvbS9ncmltb3Jpb19lc3RhZG8uanNvbg==");
   let ultimoJsonEnviado = "";
   let bloqueado = false;
 
-  // 1. ENVIA OS PERSONAGENS PARA O FIREBASE SEMPRE QUE VOCÊ SALVAR
   window.salvarNaNuvem = async function(estado) {
     if (bloqueado) return;
     const jsonAtual = JSON.stringify(estado);
@@ -970,7 +965,6 @@ render(true);
     }
   };
 
-  // 2. BUSCA ATUALIZAÇÕES DA NUVEM AO ABRIR O SITE E A CADA 4 SEGUNDOS
   async function verificarNuvem() {
     if (bloqueado) return;
     try {

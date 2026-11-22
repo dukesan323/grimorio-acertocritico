@@ -378,7 +378,10 @@ function load(){
 }
 let warned=false;
 function save(){
-  try{localStorage.setItem(KEY,JSON.stringify(S))}
+  try{
+    localStorage.setItem(KEY,JSON.stringify(S));
+    if(window.salvarNaNuvem) window.salvarNaNuvem(S);
+  }
   catch(e){if(!warned){warned=true;toast('Não foi possível salvar. Exporte uma cópia!')}}
 }
 const cur=()=>S.chars.find(c=>c.id===S.current)||S.chars[0];
@@ -934,14 +937,14 @@ function copy(text,msg){
 render(true);
 })();
 </script>
-  <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+ <script type="module">
+  import { initializeApp } from "https://gstatic.com";
   import { getDatabase, ref, set, onValue } from "https://gstatic.com";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCcbVl0QYbryQ-F703vSLyz2qe3YaE2ixU",
-    authDomain: "grimorio-acertocritico.firebaseapp.com",
-    databaseURL: "https://grimorio-acertocritico-default-rtdb.firebaseio.com",
+    authDomain: "://firebaseapp.com",
+    databaseURL: "https://firebaseio.com",
     projectId: "grimorio-acertocritico",
     storageBucket: "grimorio-acertocritico.firebasestorage.app",
     messagingSenderId: "821018439972",
@@ -950,46 +953,45 @@ render(true);
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  const grimorioRef = ref(db, 'grimorio_dados');
+  const grimorioRef = ref(db, 'grimorio_estado');
 
-  let sincronizando = false;
+  let bloqueado = false;
 
+  // Função chamada diretamente pelo save() do seu Grimório
+  window.salvarNaNuvem = function(estado) {
+    if (bloqueado) return;
+    set(grimorioRef, JSON.stringify(estado))
+      .then(() => console.log("✅ Salvo na nuvem!"))
+      .catch((err) => console.error("❌ Erro ao salvar:", err));
+  };
+
+  // Escuta alterações feitas por qualquer pessoa na nuvem
   onValue(grimorioRef, (snapshot) => {
-    const dadosNuvem = snapshot.val();
-    if (!dadosNuvem) return;
+    const jsonNuvem = snapshot.val();
+    if (!jsonNuvem) return;
 
-    let mudou = false;
-    sincronizando = true;
-
-    Object.keys(dadosNuvem).forEach((chave) => {
-      if (localStorage.getItem(chave) !== dadosNuvem[chave]) {
-        localStorage.setItem(chave, dadosNuvem[chave]);
-        mudou = true;
-      }
+    // Descobre automaticamente qual é a chave usada no localStorage do Grimório
+    let chaveLocal = Object.keys(localStorage).find(k => {
+      try { const p = JSON.parse(localStorage.getItem(k)); return p && Array.isArray(p.chars); }
+      catch(e) { return false; }
     });
 
-    sincronizando = false;
+    const valorAtual = chaveLocal ? localStorage.getItem(chaveLocal) : null;
 
-    if (mudou) {
-      window.dispatchEvent(new Event('storage'));
-      if (typeof render === "function") render();
-      else if (typeof init === "function") init();
-      else location.reload();
+    if (valorAtual !== jsonNuvem) {
+      bloqueado = true;
+      if (chaveLocal) {
+        localStorage.setItem(chaveLocal, jsonNuvem);
+      } else {
+        // Caso seja um dispositivo novo sem chave criada ainda, cria com o padrão e recarrega
+        for (let i = 0; i < localStorage.length; i++) {
+          localStorage.setItem(localStorage.key(i), jsonNuvem);
+        }
+      }
+      bloqueado = false;
+      location.reload();
     }
   });
-
-  const setItemOriginal = localStorage.setItem;
-  localStorage.setItem = function(chave, valor) {
-    setItemOriginal.apply(this, arguments);
-    if (sincronizando) return;
-
-    const pacote = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      pacote[k] = localStorage.getItem(k);
-    }
-    set(grimorioRef, pacote);
-  };
 </script>
 </body>
 </html>

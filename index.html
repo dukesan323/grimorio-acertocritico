@@ -937,7 +937,7 @@ function copy(text,msg){
 render(true);
 })();
 </script>
- <script type="module">
+<script type="module">
   import { initializeApp } from "https://gstatic.com";
   import { getDatabase, ref, set, onValue } from "https://gstatic.com";
 
@@ -957,7 +957,6 @@ render(true);
 
   let bloqueado = false;
 
-  // Função chamada diretamente pelo save() do seu Grimório
   window.salvarNaNuvem = function(estado) {
     if (bloqueado) return;
     set(grimorioRef, JSON.stringify(estado))
@@ -965,12 +964,10 @@ render(true);
       .catch((err) => console.error("❌ Erro ao salvar:", err));
   };
 
-  // Escuta alterações feitas por qualquer pessoa na nuvem
   onValue(grimorioRef, (snapshot) => {
     const jsonNuvem = snapshot.val();
     if (!jsonNuvem) return;
 
-    // Descobre automaticamente qual é a chave usada no localStorage do Grimório
     let chaveLocal = Object.keys(localStorage).find(k => {
       try { const p = JSON.parse(localStorage.getItem(k)); return p && Array.isArray(p.chars); }
       catch(e) { return false; }
@@ -983,7 +980,6 @@ render(true);
       if (chaveLocal) {
         localStorage.setItem(chaveLocal, jsonNuvem);
       } else {
-        // Caso seja um dispositivo novo sem chave criada ainda, cria com o padrão e recarrega
         for (let i = 0; i < localStorage.length; i++) {
           localStorage.setItem(localStorage.key(i), jsonNuvem);
         }

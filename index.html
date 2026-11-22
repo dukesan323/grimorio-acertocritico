@@ -938,7 +938,11 @@ render(true);
 })();
 </script>
 <script>
-  const DB_URL = "https://firebaseio.com";
+  const PROJETO = "grimorio-acertocritico-default-rtdb";
+  const DOMINIO = "firebaseio.com";
+  const CAMINHO = "grimorio_estado.json";
+  const DB_URL = "https://" + PROJETO + "." + DOMINIO + "/" + CAMINHO;
+
   let ultimoJsonEnviado = "";
   let bloqueado = false;
 
@@ -979,7 +983,6 @@ render(true);
       const jsonNuvem = JSON.stringify(dadosNuvem);
       if (jsonNuvem === ultimoJsonEnviado) return;
 
-      // Encontra a chave do Grimório no localStorage
       let chaveLocal = Object.keys(localStorage).find(k => {
         try {
           const p = JSON.parse(localStorage.getItem(k));
@@ -998,7 +1001,6 @@ render(true);
         if (chaveLocal) {
           localStorage.setItem(chaveLocal, jsonNuvem);
         } else {
-          // Se for um dispositivo novo, salva na primeira chave disponível ou recarrega após o init
           localStorage.setItem("grimorio_backup", jsonNuvem);
         }
 
@@ -1012,7 +1014,6 @@ render(true);
     }
   }
 
-  // Verifica assim que a página abre e depois a cada 4 segundos
   verificarNuvem();
   setInterval(verificarNuvem, 4000);
 </script>
